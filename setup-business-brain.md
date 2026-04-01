@@ -1,49 +1,162 @@
-Build a complete business operations workspace (Business Brain) by interviewing the user and generating all files. This skill is designed for business owners/managers who use Claude Code but are not developers.
+<!-- AUTO-GENERATED FILE. Edit src/*.md and run scripts/build-command.sh. -->
+
+Build or safely update a complete Business Brain workspace for a business owner or operator. This command must work for non-developers: ask short questions, normalize the answers into a concrete config, show a clear confirmation, then generate the workspace in one pass.
+
+Keep `/setup-business-brain` as the command name. The workspace must be Obsidian-compatible and Claude-friendly.
+
+Core outcomes:
+- Generate a ready-to-use vault with numbered business sections, templates, dashboards, `CLAUDE.md`, `PROGRESS.md`, local memory files, and `/resume`, `/wrap-up`, `/morning`.
+- Write a root config file named `.business-brain.json` so future update runs are deterministic.
+- Use a single canonical frontmatter model everywhere:
+  - Required: `title`, `date`, `source`, `sensitivity`
+  - Optional: `access`, `private`
+- Use a single canonical sensitivity enum everywhere: `RED`, `AMBER`, `BLUE`, `GREEN`
+- Generate role-vault tooling only when it is enabled by the config.
+
+Important operating rules:
+- Be concise, direct, and practical.
+- Do not ask more than the defined interview questions unless a follow-up is explicitly required below.
+- Normalize answers after each question into a working config object in memory.
+- When generating files, prefer deterministic content over open-ended prose.
+- Never overwrite user-authored business content during update mode.
 
 ---
 
-## Pre-flight Check
+## Pre-flight
 
-Check if CLAUDE.md already exists in the current directory. If it does:
+Before asking any setup questions:
 
-```
-This directory already has a Brain setup. Want to:
-  A) Rebuild from scratch (existing files will be backed up to _backup_[timestamp]/)
-  B) Update your config (re-run the interview, merge changes)
+1. Check for `.business-brain.json` in the current directory.
+2. If it does not exist, check for `CLAUDE.md`.
+3. Choose the mode:
+   - **New setup:** no config and no `CLAUDE.md`
+   - **Managed update:** `.business-brain.json` exists
+   - **Legacy upgrade:** `CLAUDE.md` exists but `.business-brain.json` does not
+
+### If `.business-brain.json` exists
+
+Read it and show:
+
+```text
+This directory already has a Business Brain config.
+
+Current setup:
+- Business: [business_name]
+- Sections: [comma-separated section names]
+- Systems: [email/calendar/crm/accounting/tasks summary]
+- Sensitivity: [mode]
+- Role-vault tooling: [enabled/disabled]
+
+Choose what to do:
+  A) Update config safely
+  B) Rebuild scaffold from scratch
   C) Cancel
 
 Pick A, B, or C:
 ```
 
-If A: back up all existing files to `_backup_YYYY-MM-DD/` before proceeding.
-If B: re-run relevant questions and merge answers into existing files without overwriting content.
-If C: stop.
+If the user picks `A`:
+- Enter **update mode**
+- Ask which parts to update:
 
-If no CLAUDE.md exists, proceed with the interview.
+```text
+What do you want to update?
+  1) Business identity
+  2) Sections
+  3) Systems
+  4) Sensitivity / access
+  5) Daily workflow
+  6) Role-vault tooling
+
+Type the numbers to update, e.g. "2, 4, 6":
+```
+
+- Re-ask only the relevant questions later.
+- Rewrite only tracked scaffold files listed in `.business-brain.json.generated_files`.
+- Never overwrite user-authored notes inside numbered section folders, `Sessions/`, or filled-in template-based notes.
+- If a section is removed during update, do not delete its folder. Add it to `.business-brain.json.legacy_sections` and stop linking to it from newly generated dashboards.
+
+If the user picks `B`:
+- Enter **rebuild mode**
+- Back up only tracked scaffold files from `.business-brain.json.generated_files` into `_backup_YYYY-MM-DD-HHMMSS/`
+- Back up tracked generated directories only if they contain scaffold files created by this command.
+- Do not move or delete user-authored notes inside numbered section folders unless the user explicitly asks for a full teardown.
+- Then run the full interview again and regenerate the scaffold.
+
+If the user picks `C`, stop.
+
+### If `CLAUDE.md` exists but `.business-brain.json` does not
+
+Treat this as a legacy setup and show:
+
+```text
+I found an existing `CLAUDE.md` but no `.business-brain.json`.
+
+Choose what to do:
+  A) Adopt this vault into the new managed Business Brain format
+  B) Rebuild scaffold from scratch
+  C) Cancel
+
+Pick A, B, or C:
+```
+
+If the user picks `A`:
+- Create a new normalized `.business-brain.json` from the interview answers and current folder structure.
+- Preserve existing files unless they are regenerated scaffold files.
+
+If the user picks `B`, run rebuild mode.
+If `C`, stop.
+
+### Normalized config object
+
+Maintain this working config internally throughout the interview and write it to `.business-brain.json` during generation:
+
+```json
+{
+  "version": "2.0.0",
+  "business_name": "",
+  "operator_name": "",
+  "industry": "",
+  "location": "",
+  "user_role": "",
+  "team_size": "small",
+  "fy_start_month": "July",
+  "sections": [],
+  "systems": {
+    "email": "none",
+    "calendar": "none",
+    "crm": "none",
+    "accounting": "none",
+    "tasks": "none"
+  },
+  "sensitivity": {
+    "mode": "two-tier",
+    "access_levels": ["owner", "manager", "staff"],
+    "default_general": "GREEN",
+    "default_restricted": "AMBER"
+  },
+  "daily_workflow": [],
+  "feature_flags": {
+    "role_vaults_enabled": false
+  },
+  "legacy_sections": [],
+  "generated_files": [],
+  "generated_directories": [],
+  "generated_at": ""
+}
+```
 
 ---
 
-## Opening Message
+## Interview
 
-```
-Welcome to Business Brain setup. I'm going to ask you 5 questions, then
-build your entire workspace — an Obsidian-compatible knowledge vault with
-AI context, session management, a daily planner, and templates tailored
-to your business.
+Ask the full 5-question interview for new setups and rebuilds. In update mode, ask only the relevant questions selected in pre-flight.
 
-This takes about 3 minutes. You can skip any question by pressing Enter
-and I'll use sensible defaults.
-
-Let's go.
-```
-
----
-
-## Question 1: Business Identity
+### Question 1: Business Identity
 
 Ask:
 
-```
+```text
 Q1 — Tell me about your business.
 
 Give me one or two sentences: business name, what you do, where you're
@@ -60,127 +173,183 @@ based, and your role. For example:
 Your turn:
 ```
 
-**Extract from their answer:**
-- `business_name` — first proper noun / named entity
-- `industry` — classify into: trades, professional-services, retail, manufacturing, hospitality, creative, tech, other
-- `location` — city/state/country
-- `user_role` — owner, manager, director, or specific title
-- `team_size` — solo (1), small (2-5), medium (5-20), large (20+)
-- `fy_start` — infer from country (Australia = July, US/UK = January, NZ = April — confirm if unsure)
+Normalize into:
+- `business_name`
+- `operator_name` if clearly present, otherwise leave blank
+- `industry`: `trades`, `professional-services`, `retail`, `manufacturing`, `hospitality`, `creative`, `tech`, `other`
+- `location`
+- `user_role`
+- `team_size`: `solo`, `small`, `medium`, `large`
+- `fy_start_month`: infer from country where reasonable
+  - Australia = `July`
+  - New Zealand = `April`
+  - US / UK / Canada / unspecified = `January`
 
-**Default if skipped:** "My Business", general industry, Australia, Owner, small team, July FY
+Default if skipped:
+- business_name: `My Business`
+- operator_name: ``
+- industry: `other`
+- location: `Australia`
+- user_role: `Owner`
+- team_size: `small`
+- fy_start_month: `July`
 
-Wait for their answer before proceeding to Q2.
+### Question 2: Business Structure
 
----
+Use the detected industry to show the matching Option B.
 
-## Question 2: Business Structure
-
-Adapt based on the industry detected in Q1. Show the matching Option B from this table:
-
-| Detected Industry | Option B Label | Sections |
+| Industry | Label | Sections |
 |---|---|---|
-| Trades | Trades | Finance / Sales / Jobs / Procurement / Workshop / Admin |
-| Manufacturing | Manufacturing | Finance / Sales & Marketing / Operations / Production / Procurement / Admin & HR |
-| Professional Services | Professional Services | Finance / Clients / Projects / Marketing / Operations / Knowledge Base |
-| Retail | Retail | Finance / Sales & Marketing / Inventory / Suppliers / Operations / Staff |
-| Hospitality | Hospitality | Finance / Front of House / Kitchen-Menu / Suppliers / Staff / Marketing |
-| Creative / Agency | Creative | Finance / Clients / Projects / Creative Assets / Marketing / Admin |
-| Tech / SaaS | Tech | Finance / Product / Engineering / Sales / Marketing / Operations |
-| Other / General | Standard | Finance / Sales & Marketing / Operations / Admin & HR / Projects |
+| trades | Trades | Finance / Sales / Jobs / Procurement / Workshop / Admin |
+| manufacturing | Manufacturing | Finance / Sales & Marketing / Operations / Production / Procurement / Admin & HR |
+| professional-services | Professional Services | Finance / Clients / Projects / Marketing / Operations / Knowledge Base |
+| retail | Retail | Finance / Sales & Marketing / Inventory / Suppliers / Operations / Staff |
+| hospitality | Hospitality | Finance / Front of House / Kitchen & Menu / Suppliers / Staff / Marketing |
+| creative | Creative | Finance / Clients / Projects / Creative Assets / Marketing / Admin |
+| tech | Tech | Finance / Product / Engineering / Sales / Marketing / Operations |
+| other | Standard | Finance / Sales & Marketing / Operations / Admin & HR / Projects |
 
 Ask:
 
-```
+```text
 Q2 — What areas of your business do you need to organise?
 
 Based on what you've told me, here's a starting structure. Pick one, or
 tell me what to change:
 
-  A) Standard (works for most businesses)
+  A) Standard
      Finance / Sales & Marketing / Operations / Admin & HR / Projects
 
-  B) [Industry-specific label]
-     [Industry-specific sections from table above]
+  B) [industry-specific label]
+     [industry-specific sections]
 
   C) Let me tell you what I need
-     (Just list your departments or functions, e.g. "Sales, Projects, Accounts, Workshop")
+     (List your departments or functions, e.g. "Sales, Projects, Accounts, Workshop")
 
-Pick A, B, C, or just type your own list:
+Pick A, B, C, or type your own list:
 ```
 
-**Store the chosen sections as a list.** These become the numbered folders.
+Normalize into `sections` as an ordered array of objects:
 
-**Default if skipped:** Option A
+```json
+[
+  {
+    "number": "01",
+    "name": "Finance",
+    "folder": "01-Finance",
+    "description": "Budgets, cash flow, invoices, financial controls",
+    "default_sensitivity": "AMBER"
+  }
+]
+```
 
-Wait for their answer before proceeding to Q3.
+Rules:
+- Preserve the user’s chosen order.
+- Use two-digit numbering: `01`, `02`, `03`, ...
+- Slug folders as `[NN]-[Section-Name]`
+- Default descriptions:
+  - Finance: `Budgets, cash flow, invoices, financial controls`
+  - Sales & Marketing / Sales: `Pipeline, campaigns, offers, analytics`
+  - Operations / Jobs / Workshop / Production: `Procedures, delivery, execution, QA`
+  - Admin & HR / Staff / Admin: `People, admin, hiring, compliance`
+  - Projects / Clients / Product / Engineering / Knowledge Base / Inventory / Suppliers / Procurement / Front of House / Kitchen & Menu / Creative Assets: short plain-English description based on the section name
+- If the user enters custom sections, generate sensible plain-English descriptions
 
----
+Default if skipped:
+- Use Option A
 
-## Question 3: Systems & Tools
+### Question 3: Systems & Tools
 
 Ask:
 
-```
+```text
 Q3 — What software does your business run on?
 
-Pick the closest match for each — type the letters, or skip any you don't use:
+Pick the closest match for each:
 
-  Email:       G) Gmail/Google Workspace   O) Outlook/Microsoft 365   X) Other/skip
-  Calendar:    G) Google Calendar           O) Outlook Calendar         X) Other/skip
-  CRM:         Z) Zoho    H) HubSpot    S) Salesforce    N) None/spreadsheet
-  Accounting:  X) Xero    M) MYOB       Q) QuickBooks    N) None/spreadsheet
-  Tasks:       G) Google Tasks   T) Todoist   A) Asana   N) None/pen & paper
+  Email:       G) Gmail / Google Workspace   O) Outlook / Microsoft 365   X) Other / skip
+  Calendar:    G) Google Calendar            O) Outlook Calendar          X) Other / skip
+  CRM:         Z) Zoho    H) HubSpot    S) Salesforce    N) None / spreadsheet
+  Accounting:  X) Xero    M) MYOB       Q) QuickBooks    N) None / spreadsheet
+  Tasks:       G) Google Tasks   T) Todoist   A) Asana   N) None / pen & paper
 
-Example: "G, G, N, X, G" or "Gmail, Google Cal, no CRM, Xero, pen and paper"
+Example: "G, G, N, X, G"
 
 Your tools:
 ```
 
-**Parse into:** email (gmail|outlook|other), calendar (google|outlook|other), crm (zoho|hubspot|salesforce|none), accounting (xero|myob|quickbooks|none), tasks (google-tasks|todoist|asana|none)
+Normalize into:
 
-**Default if skipped:** All `none`
+```json
+{
+  "email": "gmail",
+  "calendar": "google",
+  "crm": "zoho",
+  "accounting": "xero",
+  "tasks": "google-tasks"
+}
+```
 
-Wait for their answer before proceeding to Q4.
+Defaults if skipped:
+- all values = `none` except `email` and `calendar` can be `other` only if explicitly stated
 
----
+Important truthfulness rule:
+- Do not claim any MCP tool is connected during setup.
+- In generated files, represent these as `Configured` or `Manual`, not `Connected`.
 
-## Question 4: Sensitivity & Access
+### Question 4: Sensitivity & Access
 
 Ask:
 
-```
+```text
 Q4 — How careful do we need to be with your data?
 
-  A) Solo / trusted team — everything in one vault, no restrictions needed
-  B) Some sensitive data — keep financials and pricing locked down, everything else open
-  C) Multi-level access — different people see different things (e.g. staff vs managers)
+  A) Simple — one main vault, no staff filtering
+  B) Some sensitive data — keep finance, pricing, and confidential docs restricted
+  C) Multi-level access — different people should see different content
 
 Most small businesses pick B. Pick A, B, or C:
 ```
 
-**If they pick C, ask follow-up:**
+Normalize as:
+- `A` => mode `none`
+- `B` => mode `two-tier`
+- `C` => mode `four-tier`
 
+Canonical sensitivity mapping:
+- mode `none`
+  - default general = `GREEN`
+  - restricted notes can still use `private: true`
+- mode `two-tier`
+  - general = `GREEN`
+  - restricted = `AMBER`
+- mode `four-tier`
+  - full enum available: `RED`, `AMBER`, `BLUE`, `GREEN`
+
+If the user picks `C`, ask the required follow-up:
+
+```text
+Quick follow-up — what access levels do you need?
+Examples: "Owner, Manager, Staff" or "Directors, Team Leads, Everyone"
+
+Your levels (press Enter for Owner / Manager / Staff):
 ```
-Quick follow-up — what access levels do you need? For example:
-  "Owner, Manager, Staff" or "Directors, Team Leads, Everyone"
 
-Your levels (or press Enter for Owner / Manager / Staff):
-```
+Normalize `access_levels`:
+- lowercase
+- hyphenated where needed
+- keep order from highest to lowest access
+- default: `owner`, `manager`, `staff`
 
-**Store as:** sensitivity_mode (none|two-tier|four-tier) and access_levels list
+Feature-flag rule:
+- If mode = `four-tier`, set `feature_flags.role_vaults_enabled = true`
+- If mode is not `four-tier`, default `feature_flags.role_vaults_enabled = false`
 
-**Default if skipped:** B (two-tier)
-
-Wait for their answer before proceeding to Q5.
-
----
-
-## Question 5: Daily Workflow
+### Question 5: Daily Workflow
 
 Ask:
 
-```
+```text
 Q5 — What does a typical morning look like when you sit down to work?
 
 Pick everything that applies:
@@ -189,166 +358,312 @@ Pick everything that applies:
   2) Review today's calendar / appointments
   3) Check on team tasks or delegate work
   4) Review sales pipeline or leads
-  5) Check financials (cash flow, invoices, payments)
+  5) Check financials
   6) Review project status / job progress
 
-Type the numbers that match, e.g. "1, 2, 4" or "all of them":
+Type the numbers that match, e.g. "1, 2, 4":
 ```
 
-**Store selections.** Filter out impossible combinations:
-- Selection 3 (team tasks): skip if team_size is solo — add self-management block instead
-- Selection 4 (sales pipeline): only if crm != none — otherwise generate manual checklist
-- Selection 5 (financials): only if accounting != none — otherwise generate manual checklist
+Normalize into `daily_workflow` using these values:
+- `email`
+- `calendar`
+- `team-tasks`
+- `sales-pipeline`
+- `financials`
+- `projects`
 
-**Default if skipped:** 1 and 2 (email + calendar)
+Rules:
+- If team size is `solo`, convert `team-tasks` to `self-review`
+- If CRM = `none`, keep `sales-pipeline` but generated `/morning` must use a manual checklist
+- If accounting = `none`, keep `financials` but generated `/morning` must use a manual checklist
+
+Default if skipped:
+- `email`, `calendar`
 
 ---
 
 ## Confirmation
 
-After all 5 questions, display:
+After the interview, always display a concrete build summary before generating files.
 
+If role-vault tooling is currently disabled and the setup is not four-tier, ask one final optional question before the summary:
+
+```text
+Optional — do you also want staff-specific role vaults and a build script?
+
+  A) No, keep one main vault only
+  B) Yes, include optional role-vault tooling
+
+Pick A or B:
 ```
-Here's what I'll build for you:
 
-[Business Name] Vault
-├── .claude/commands/          → /resume, /wrap-up, /morning skills
-├── .obsidian/                 → Vault config (ready to open in Obsidian)
-├── Sessions/                  → Session logs (auto-managed)
-├── Templates/                 → [N] templates for your common note types
-├── CLAUDE.md                  → Your business context (Claude reads this every session)
-├── PROGRESS.md                → Status dashboard across all areas
-│
-├── 01-[Section 1]/            → [description]
-├── 02-[Section 2]/            → [description]
-├── [... rest of structure ...]
-│
-└── Memory files pre-loaded
+If `B`, set `feature_flags.role_vaults_enabled = true`.
 
-Skills configured:
-  /resume     → Pick up where you left off (reads last 3 sessions + all memory)
-  /wrap-up    → Log what you did this session
-  /morning    → Daily briefing: [list of selected sections from Q5]
+Then show:
 
-Systems referenced: [list from Q3]
-Data sensitivity: [tier description from Q4]
+```text
+Here's what I'll build:
+
+[Business Name]
+├── .business-brain.json        → Managed config for future updates
+├── .claude/commands/           → /resume, /wrap-up, /morning
+├── .obsidian/                  → Minimal Obsidian config
+├── 00-Home/                    → Master dashboard
+├── [numbered section folders]  → Business areas based on your answers
+├── Sessions/                   → Session logs
+├── Templates/                  → Note templates
+├── Memory/                     → Local memory reference files
+├── CLAUDE.md                   → Business context for future sessions
+└── PROGRESS.md                 → Cross-business dashboard
+
+Sections:
+[list every section as folder → description]
+
+Systems:
+- Email: [configured/manual value]
+- Calendar: [configured/manual value]
+- CRM: [configured/manual value]
+- Accounting: [configured/manual value]
+- Tasks: [configured/manual value]
+
+Sensitivity:
+- Mode: [none/two-tier/four-tier]
+- Access levels: [comma-separated access levels]
+- Role-vault tooling: [enabled/disabled]
+
+Modules to generate:
+- Core scaffold
+- Templates
+- Daily workflow command
+- Local memory files
+[If role_vaults_enabled:]
+- Role-vault config, build script, and docs
 
 Does this look right? (Y to build, or tell me what to change)
 ```
 
-If they request changes, re-ask only the relevant question and re-display confirmation.
+If the user requests changes:
+- Re-ask only the relevant question(s)
+- Rebuild the normalized config
+- Re-display the confirmation summary
 
-If they confirm, proceed to generation.
+Only generate files after explicit confirmation.
 
 ---
 
 ## Generation
 
-Execute in this exact order. Create ALL files — do not skip any step.
+Generate files in this exact order.
 
-### Step 1: Folder Structure
+### Step 1: Finalize tracked paths
 
-Create the numbered section folders based on Q2. For each section, create:
-- `[NN]-[Section-Name]/_index.md` — with frontmatter: title, sensitivity (default from Q4), access
-- `[NN]-[Section-Name]/dashboard.md` — Dataview-style dashboard referencing content in that section
+Before writing files, build `generated_directories` and `generated_files`.
 
-Also create:
-- `00-Home/dashboard.md` — master hub linking all sections
-- `Sessions/` — empty directory for session logs
-- `Templates/` — directory for templates
-- `.claude/commands/` — directory for skills
+Always include these generated directories:
+- `.claude/commands`
+- `.obsidian`
+- `00-Home`
+- `Sessions`
+- `Templates`
+- `Memory`
+- every section folder in `sections`
 
-### Step 2: CLAUDE.md
+Always include these generated files:
+- `.business-brain.json`
+- `CLAUDE.md`
+- `PROGRESS.md`
+- `00-Home/dashboard.md`
+- `.claude/commands/resume.md`
+- `.claude/commands/wrap-up.md`
+- `.claude/commands/morning.md`
+- `.obsidian/app.json`
+- `.obsidian/appearance.json`
+- `.obsidian/community-plugins.json`
+- `Templates/session-log.md`
+- `Templates/meeting-notes.md`
+- `Templates/general-note.md`
+- `Memory/MEMORY.md`
+- `Memory/user_profile.md`
+- `Memory/project_overview.md`
+- `Memory/reference_systems.md`
+- `Memory/reference_team_map.md` when team size is not solo
+- for every section:
+  - `[folder]/_index.md`
+  - `[folder]/dashboard.md`
 
-Write CLAUDE.md at the vault root. **MUST be under 200 lines.** Use this structure:
+Conditionally include:
+- `Templates/procedure.md` when any section name contains `operations`, `jobs`, `workshop`, `production`, `procurement`, or `inventory`
+- `Templates/project-brief.md` when any section name contains `projects`, `clients`, `product`, or `engineering`
+- `vault-roles.yaml`, `build-vaults.sh`, `docs/build-vaults-README.md` only when `feature_flags.role_vaults_enabled = true`
+
+### Step 2: Write `.business-brain.json`
+
+Write the normalized config file at the vault root. It must include the finalized `generated_files`, `generated_directories`, `legacy_sections`, and today’s date in `generated_at`.
+
+### Step 3: Create section folders and dashboards
+
+For every section:
+
+Write `[folder]/_index.md`:
+
+```markdown
+---
+title: "[Section Name]"
+date: {{today}}
+source: "system"
+sensitivity: [default_sensitivity]
+---
+
+# [Section Name]
+
+[section description]
+
+## What lives here
+- Working notes and reference material for [section name in lowercase]
+- Use templates from `Templates/` for consistent frontmatter
+
+## Default rules
+- Sensitivity default: `[default_sensitivity]`
+- Keep note titles specific and searchable
+```
+
+Write `[folder]/dashboard.md`:
+
+~~~~markdown
+---
+title: "[Section Name] Dashboard"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
+---
+
+# [Section Name] Dashboard
+
+## Purpose
+Working view for [section name in lowercase].
+
+## Recent notes
+```dataview
+TABLE date, source, sensitivity
+FROM "[folder]"
+WHERE file.name != "dashboard" AND file.name != "_index"
+SORT date DESC
+LIMIT 10
+```
+~~~~
+
+Write `00-Home/dashboard.md`:
+
+~~~~markdown
+---
+title: "Home Dashboard"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
+---
+
+# [Business Name] Dashboard
+
+## Sections
+[bullet list of section links]
+
+## Active Projects
+```dataview
+TABLE rows.status AS Status, rows.location AS Location
+FROM "PROGRESS"
+FLATTEN file.lists AS rows
+WHERE contains(rows.text, "**Status:**")
+LIMIT 20
+```
+
+## Recent Sessions
+```dataview
+TABLE date, project
+FROM "Sessions"
+SORT date DESC
+LIMIT 5
+```
+~~~~
+
+### Step 4: Write `CLAUDE.md`
+
+Write `CLAUDE.md`. It must be deterministic and stay under 200 lines.
+
+Use this structure:
 
 ```markdown
 # [Business Name] — Operating Manual
 
-Claude reads this file at the start of every session.
+Claude reads this file at the start of each session.
 
 ## Company Context
-
-**[Business Name]** — [industry description], [location]
+- Business: [business_name]
 - Role: [user_role]
-- Team: [team_size description]
-- Systems: [list from Q3]
-- FY: [fy_start] to [fy_end]
+- Location: [location]
+- Team size: [team_size]
+- Systems: [short systems summary]
+- Financial year starts: [fy_start_month]
 
 ## Workspace Structure
-
-    [vault root]/
-    ├── .claude/commands/     → /resume, /wrap-up, /morning
-    ├── Sessions/             → Session logs
-    ├── Templates/            → Note templates
-    ├── CLAUDE.md             → This file
-    ├── PROGRESS.md           → Status dashboard
-    ├── 00-Home/              → Master dashboard
-    ├── 01-[Section]/         → [description]
-    ├── 02-[Section]/         → [description]
-    [... all sections ...]
+- `.business-brain.json` — managed setup config
+- `.claude/commands/` — `/resume`, `/wrap-up`, `/morning`
+- `00-Home/` — master dashboard
+- `[section folders]` — business work areas
+- `Sessions/` — session logs
+- `Templates/` — note templates
+- `Memory/` — local memory/reference files
+- `PROGRESS.md` — cross-business dashboard
 
 ## Session Workflow
+1. Start with `/resume`
+2. Do the work
+3. End with `/wrap-up`
+4. Keep `PROGRESS.md` current when priorities change
 
-1. Start every session with `/resume` to load context
-2. End every session with `/wrap-up` to log what was done
-3. Update PROGRESS.md when completing or starting major work
+## Sensitivity Rules
+[mode none]
+- Default working notes use `sensitivity: GREEN`
+- Use `private: true` only for notes that should never be copied into staff-facing outputs
 
-## Cross-Project Rules
+[mode two-tier]
+- General notes use `sensitivity: GREEN`
+- Restricted notes use `sensitivity: AMBER`
+- Use `private: true` only for notes that should stay out of any shared copy
 
-1. Read project-specific CLAUDE.md before doing work in a sub-project
-2. Never delete production data without asking — disable instead
-3. Keep PROGRESS.md current — update when completing or starting work
-4. Session logs go in Sessions/
-5. Every function/automation change: save old version dated before deploying new version
-
-## Sensitivity Classification
-
-[Generate based on Q4 choice:]
-
-[If A — None:]
-No formal tiers. Use `private: true` in frontmatter for anything Claude should not store in memory.
-
-[If B — Two-tier:]
-| Tier | Label | Content | Rule |
-|------|-------|---------|------|
-| PRIVATE | Restricted | Financials, pricing, margins, supplier costs | Claude stores structural refs only, never values |
-| OPEN | General | Everything else | Normal access |
-
-[If C — Four-tier:]
-| Tier | Label | Content | Rule |
-|------|-------|---------|------|
-| RED | Encrypted | [user-defined top-tier content] | Claude stores structural refs only, never values |
-| AMBER | Restricted | [user-defined second-tier content] | Limited access |
-| BLUE | Role-specific | [user-defined third-tier content] | Role-based access |
-| GREEN | Company-wide | Policies, training, general docs | All access |
+[mode four-tier]
+- `RED` = master-vault-only critical data
+- `AMBER` = restricted operational or commercial data
+- `BLUE` = role-specific content
+- `GREEN` = company-wide content
+- Use `access` only when a note is limited to named access levels
+- Use `private: true` only when a note must never appear in derived role vaults
 
 ## Content Rules
-
-- Every content note needs frontmatter: `title`, `date`, `source`, `sensitivity`
-- Notes with `private: true`: Claude stores structural refs only, never values
-- Use Templates/ for consistent note creation
+- Every generated or managed note uses: `title`, `date`, `source`, `sensitivity`
+- `access` is optional
+- `private` is optional
+- Store reference summaries in `Memory/`, not hidden tool-specific paths
 ```
 
-### Step 3: PROGRESS.md
+### Step 5: Write `PROGRESS.md`
 
 ```markdown
 ---
 type: dashboard
-last_updated: [today's date]
+last_updated: {{today}}
+source: system
+sensitivity: GREEN
 ---
 
 # [Business Name] — Status Dashboard
 
-## Active Projects
-
-[For each section from Q2, create a block:]
+## Active Areas
+[for each section]
 
 ### [Section Name]
-**Status:** Not started
-**Location:** `[NN]-[Section-Name]/`
-
-[... repeat for each section ...]
+- **Status:** Not started
+- **Location:** `[folder]/`
+- **Next move:** Add the first working note for this area
 
 ---
 
@@ -357,390 +672,340 @@ last_updated: [today's date]
 |------|---------|---------|
 ```
 
-### Step 4: /resume Skill
+### Step 6: Write slash commands
 
 Write `.claude/commands/resume.md`:
 
 ```markdown
-Read the following files to understand where we left off:
+Read these files to understand the current state of the business workspace:
 
-## Core Context (always read)
+1. `CLAUDE.md`
+2. `.business-brain.json`
+3. `PROGRESS.md`
+4. `Memory/MEMORY.md`
+5. The 3 most recent files in `Sessions/`
 
-1. CLAUDE.md — master project context
-2. PROGRESS.md — cross-project status dashboard
-3. The **3 most recent files** in Sessions/ (sort by date in filename)
-4. Claude memory — read all project and reference memory files listed in MEMORY.md
+Then:
+- Read linked memory files from `Memory/MEMORY.md`
+- Summarize the last 3 sessions in one line each
+- Identify the current priority from `PROGRESS.md`
+- Identify blockers or stale areas
 
-## Project-Specific Context
+If the latest session log is older than 2 calendar days, flag it.
+If `PROGRESS.md` is older than 5 calendar days, flag it.
 
-Check the last 3 session logs to determine which projects are active, then read any project-specific CLAUDE.md files in those areas.
-
-## Staleness Check
-
-- If the most recent session log is more than 2 calendar days old, flag: **"Session log may be stale (last: [date])."**
-- If PROGRESS.md `last_updated` is more than 5 days old, flag: **"PROGRESS.md hasn't been updated since [date]."**
-
-## Briefing Output
-
-Give a concise briefing covering:
-
-1. **Last 3 sessions summary** — one line each, reverse chronological
-2. **Current priority** — what's most urgent across all projects?
-3. **Open blockers** — anything blocking progress?
-4. **Pending tasks** — key unchecked items from PROGRESS.md
-5. **Standing decisions** — any feedback memories relevant to likely work today
-
-End with: **"What do you want to focus on today?"**
+End with:
+**What do you want to focus on today?**
 ```
-
-### Step 5: /wrap-up Skill
 
 Write `.claude/commands/wrap-up.md`:
 
 ```markdown
-End-of-session wrap-up. Do the following:
+End-of-session wrap-up.
 
-1. Create a session log file in Sessions/ named `[today's date]-[brief-topic].md` using the session-log template from Templates/
-
-2. Fill in all sections:
-   - **Context:** What was the goal of this session?
-   - **Work Done:** Bullet list of everything completed
-   - **Changes Applied:** Files created, edited, or deleted
-   - **Decisions Made:** Any choices or trade-offs decided
-   - **Key Facts Learned:** New information discovered
-   - **Pending / Next Steps:** What still needs doing
-   - **Handoff Notes:** What the next session needs to know
-
-3. Update PROGRESS.md:
-   - Check off any completed items
-   - Add any new pending items discovered
-   - Update `last_updated` date in frontmatter
-   - Add a row to the Session Log table
-
-4. Show a brief summary of what was logged and any open items for next time.
+1. Create a session log in `Sessions/` named `YYYY-MM-DD-[topic].md` using `Templates/session-log.md`
+2. Fill these sections:
+   - Context
+   - Work Done
+   - Changes Applied
+   - Decisions Made
+   - Key Facts Learned
+   - Pending / Next Steps
+   - Handoff Notes
+3. Update `PROGRESS.md`:
+   - update `last_updated`
+   - add or revise pending items where needed
+   - append a row to the session log table
+4. Summarize what was logged and what remains open
 ```
 
-### Step 6: /morning Skill
-
-Write `.claude/commands/morning.md` — configured based on Q3 (systems) and Q5 (workflow selections):
+Write `.claude/commands/morning.md` based on the normalized config:
 
 ```markdown
-Daily planner for [user_name] — [user_role] at [business_name].
+Daily briefing for the [user_role] at [business_name].
 
-This command generates a prioritised daily briefing.
+## Pre-flight
+- If today is Saturday or Sunday, output:
+  "No work day scheduled. Run `/resume` if you want project context."
+  Then stop.
 
----
+## Phase 1 — Local context
+Read:
+1. `CLAUDE.md`
+2. `.business-brain.json`
+3. `PROGRESS.md`
+4. `Memory/MEMORY.md`
+5. The most recent session log in `Sessions/`
 
-## Pre-flight Check
+Summarize open work, blockers, and what changed last session.
 
-Check what day it is. If today is Saturday or Sunday, output:
-> "No work day scheduled. Run `/resume` if you want project context."
-Then stop.
+## Phase 2 — Live sources
+Use only the sections enabled in `.business-brain.json.daily_workflow`.
 
----
+[email]
+- If email = gmail: use Gmail MCP if available; otherwise note "Gmail configured but not connected"
+- If email = outlook: use Outlook MCP if available; otherwise note "Outlook configured but not connected"
+- Otherwise: "Email source is manual"
 
-## Phase 1 — Local Data (mandatory)
+[calendar]
+- If calendar = google: use Google Calendar MCP if available
+- If calendar = outlook: use Outlook Calendar MCP if available
+- Otherwise: "Calendar source is manual"
 
-Read these files:
-1. CLAUDE.md — business context
-2. PROGRESS.md — project status
-3. The most recent file in Sessions/ (flag if >2 days old)
-4. Claude memory — read relevant project/reference memories
+[team-tasks or self-review]
+- If tasks = google-tasks: use Google Tasks MCP if available
+- If tasks = todoist or asana: use that MCP if available
+- Otherwise: use a manual team or self-review checklist
 
-Compile: open tasks, blockers, what was done last session.
+[sales-pipeline]
+- If crm = zoho: use Zoho CRM MCP if available
+- If crm = hubspot or salesforce: use that MCP if available
+- Otherwise: use a manual sales checklist
 
----
+[financials]
+- If accounting is configured: use a manual accounting checklist unless a suitable MCP integration is available
+- Otherwise: skip
 
-## Phase 2 — Live Data (MCP + fallback)
+[projects]
+- Always pull project status from `PROGRESS.md`
 
-**Call available sources in parallel.** If an MCP tool is not connected, skip that source and note it in Data Gaps.
+## Output
+Produce a short markdown briefing with:
+- Today’s schedule
+- Enabled workflow sections only
+- Open blockers
+- Data gaps
 
-[ONLY INCLUDE SECTIONS THE USER SELECTED IN Q5:]
-
-[If Q5 includes 1 (Email):]
-### Email
-[If Q3 email = gmail:]
-Use `mcp__claude_ai_Gmail__gmail_search_messages` with `q: "in:inbox newer_than:2d"`, maxResults 50.
-[If Q3 email = outlook:]
-Use Outlook MCP if available, otherwise note "Connect Outlook MCP for email integration".
-[If Q3 email = other:]
-Note: "Email source not configured — check manually."
-
-Extract: sender, subject, snippet for classification.
-
-[If Q5 includes 2 (Calendar):]
-### Calendar
-[If Q3 calendar = google:]
-Use `mcp__claude_ai_Google_Calendar__gcal_list_events` with timeMin/timeMax for today, timeZone based on location, condenseEventDetails false.
-Only include events where the user has accepted or is organiser. Exclude working location events.
-[If Q3 calendar = outlook:]
-Use Outlook Calendar MCP if available.
-[If Q3 calendar = other:]
-Note: "Calendar source not configured — check manually."
-
-Extract: meetings with times, titles, attendees.
-
-[If Q5 includes 3 (Team tasks) AND team_size > solo:]
-### Team Tasks
-[If Q3 tasks = google-tasks:]
-Use `mcp__claude_ai_Zapier__google_tasks_get_tasks_by_list` for incomplete tasks.
-[If Q3 tasks = todoist/asana:]
-Note: "Connect [tool] MCP for task integration".
-[If Q3 tasks = none:]
-Provide a blank "Team check-in" section for manual notes.
-
-[If Q5 includes 4 (Sales pipeline) AND Q3 crm != none:]
-### Sales Pipeline
-[If Q3 crm = zoho:]
-Use Zoho CRM MCP or browser fallback to check leads/pipeline.
-[If Q3 crm = hubspot/salesforce:]
-Note: "Connect [CRM] MCP for pipeline integration".
-
-[If Q5 includes 5 (Financials) AND Q3 accounting != none:]
-### Financials
-Note: "Check [accounting tool] for: outstanding invoices, bills due, account balances."
-(Accounting MCP integrations vary — provide manual checklist until connected.)
-
-[If Q5 includes 6 (Projects):]
-### Project Status
-Pull from PROGRESS.md — one-liner per active project.
-
----
-
-## Phase 3 — Output
-
-Generate a scannable markdown briefing:
-
-```
-## Daily Briefing — [Day, Date]
-[Work hours | Meetings: X | Open tasks: X]
-
-### Today's Schedule
-| Time | Block | Detail |
-[Calendar events + open blocks labelled "Deep Work" or "Admin"]
-
-[Include only sections matching Q5 selections:]
-
-### [Email section if selected]
-### [Sales section if selected]
-### [Financials section if selected]
-### [Team section if selected]
-### [Project status if selected]
-
-### Data Gaps
-[List any source that failed or isn't connected. Skip if all succeeded.]
+End with:
+**What do you want to focus on first?**
 ```
 
-End with: **"What do you want to focus on first?"**
-```
+### Step 7: Write templates
 
-### Step 7: Templates
+Always write `Templates/session-log.md`:
 
-**Always create:**
-
-`Templates/session-log.md`:
 ```markdown
 ---
-type: session
-project: "{{project}}"
+title: "{{topic}}"
 date: {{date}}
-tags:
-  - session
+source: "session"
+sensitivity: GREEN
 ---
 
 # Session: {{date}} — {{topic}}
 
 ## Context
-[What was the goal?]
 
 ## Work Done
--
+- 
 
 ## Changes Applied
--
+- 
 
 ## Decisions Made
--
+- 
 
 ## Key Facts Learned
--
+- 
 
 ## Pending / Next Steps
 - [ ]
 
 ## Handoff Notes
-[What does the next session need to know?]
 ```
 
-`Templates/meeting-notes.md`:
+Always write `Templates/meeting-notes.md`:
+
 ```markdown
 ---
 title: "{{title}}"
 date: {{date}}
-attendees: []
 source: "meeting"
-sensitivity: open
+sensitivity: GREEN
 ---
 
 # {{title}}
 
 ## Attendees
--
+- 
 
 ## Agenda
-1.
+1. 
 
-## Discussion Notes
-
+## Notes
 
 ## Action Items
 - [ ]
 
 ## Decisions Made
--
+- 
 ```
 
-**Conditionally create based on Q2 sections:**
+Always write `Templates/general-note.md`:
 
-If Operations/Jobs/Workshop section exists, create `Templates/procedure.md`:
 ```markdown
 ---
 title: "{{title}}"
 date: {{date}}
 source: "{{source}}"
-sensitivity: open
+sensitivity: GREEN
+---
+
+# {{title}}
+
+## Summary
+
+## Details
+
+## Next Actions
+- [ ]
+```
+
+Conditionally write `Templates/procedure.md`:
+
+```markdown
+---
+title: "{{title}}"
+date: {{date}}
+source: "{{source}}"
+sensitivity: GREEN
 ---
 
 # {{title}}
 
 ## Purpose
-[What is this procedure for?]
 
 ## Steps
 1.
 
 ## Notes
--
+- 
 ```
 
-If Clients/Projects section exists, create `Templates/project-brief.md`:
+Conditionally write `Templates/project-brief.md`:
+
 ```markdown
 ---
 title: "{{title}}"
 date: {{date}}
 source: "{{source}}"
-sensitivity: open
+sensitivity: GREEN
 ---
 
 # {{title}}
 
 ## Objective
-[What are we trying to achieve?]
 
 ## Scope
-[What's included / excluded?]
 
 ## Timeline
 - Start:
 - End:
 
-## Key Contacts
--
-
 ## Status
 Not started
 ```
 
-### Step 8: Memory System
+### Step 8: Write local memory files
 
-Create the memory directory at the Claude project-specific memory path for the current working directory. Then create:
+Create a vault-local `Memory/` directory. Do not use a hidden Claude-internal filesystem path.
 
-**MEMORY.md:**
+Write `Memory/MEMORY.md`:
+
 ```markdown
 # [Business Name] Memory Index
 
 ## User
-- [user_profile.md](user_profile.md) — [user_name]'s role and working style
+- [user_profile.md](user_profile.md) — role and working context
 
 ## Project Context
-- [project_overview.md](project_overview.md) — [Business Name] context and active workstreams
+- [project_overview.md](project_overview.md) — business context and active workstreams
 
 ## References
-- [reference_systems.md](reference_systems.md) — Tools and platforms in use
-[If team_size > solo:]
-- [reference_team_map.md](reference_team_map.md) — Team roster and roles
+- [reference_systems.md](reference_systems.md) — configured systems and manual sources
+[if team size != solo]
+- [reference_team_map.md](reference_team_map.md) — roles and responsibilities
 ```
 
-**user_profile.md:**
+Write `Memory/user_profile.md`:
+
 ```markdown
 ---
-name: [user_name] profile
-description: [user_name]'s role, responsibilities, and working style at [business_name]
-type: user
+title: "User Profile"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
 ---
 
-[user_name] is the [user_role] at [business_name] ([industry], [location]).
-Team size: [team_size].
+# User Profile
 
-Working style and preferences will be captured as sessions progress.
+- Name: [operator_name or "Primary operator"]
+- Role: [user_role]
+- Business: [business_name]
+- Location: [location]
+- Team size: [team_size]
 ```
 
-**project_overview.md:**
+Write `Memory/project_overview.md`:
+
 ```markdown
 ---
-name: [Business Name] overview
-description: [Business Name] business context, systems, and current state
-type: project
+title: "Project Overview"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
 ---
 
-**[Business Name]** — [industry], [location]
-- [user_role]: [user_name]
-- Team: [team_size]
-- Systems: [list from Q3]
-- FY: [fy_start] to [fy_end]
+# [Business Name] Overview
 
-Active workstreams and projects will be tracked in PROGRESS.md and updated here as context develops.
+- Industry: [industry]
+- Systems: [short systems summary]
+- Financial year starts: [fy_start_month]
+- Sections: [comma-separated section names]
 ```
 
-**reference_systems.md:**
+Write `Memory/reference_systems.md`:
+
 ```markdown
 ---
-name: Systems and tools
-description: Software platforms used at [business_name] — for configuring integrations and MCP tools
-type: reference
+title: "Systems Reference"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
 ---
 
-| System | Tool | Status |
-|--------|------|--------|
-| Email | [Q3 email choice] | [Connected/Not connected] |
-| Calendar | [Q3 calendar choice] | [Connected/Not connected] |
-| CRM | [Q3 crm choice or "None"] | [Connected/Not connected] |
-| Accounting | [Q3 accounting choice or "None"] | [Connected/Not connected] |
-| Tasks | [Q3 tasks choice or "None"] | [Connected/Not connected] |
+# Systems Reference
 
-To connect a tool as an MCP integration, tell Claude: "set up [tool] integration"
+| System | Choice | Status |
+|--------|--------|--------|
+| Email | [email] | [Configured or Manual] |
+| Calendar | [calendar] | [Configured or Manual] |
+| CRM | [crm] | [Configured or Manual] |
+| Accounting | [accounting] | [Configured or Manual] |
+| Tasks | [tasks] | [Configured or Manual] |
 ```
 
-**reference_team_map.md** (only if team_size > solo):
+Write `Memory/reference_team_map.md` when team size is not solo:
+
 ```markdown
 ---
-name: Team roster
-description: [Business Name] team members, roles, and contact details
-type: reference
+title: "Team Map"
+date: {{today}}
+source: "system"
+sensitivity: GREEN
 ---
 
 # Team Map
 
-| Name | Role | Email | Notes |
-|------|------|-------|-------|
-| [user_name] | [user_role] | | |
-
-Add team members as you work with Claude. This file helps Claude understand who does what and how to classify communications.
+| Name | Role | Notes |
+|------|------|-------|
+| [operator_name or "Primary operator"] | [user_role] | |
 ```
 
-### Step 9: Obsidian Config
+### Step 9: Write minimal Obsidian config
 
-Create `.obsidian/app.json`:
+Write `.obsidian/app.json`:
+
 ```json
 {
   "defaultViewMode": "preview",
@@ -750,57 +1015,112 @@ Create `.obsidian/app.json`:
 }
 ```
 
-Create `.obsidian/appearance.json`:
+Write `.obsidian/appearance.json`:
+
 ```json
 {
   "theme": "system"
 }
 ```
 
-Create `.obsidian/community-plugins.json`:
+Write `.obsidian/community-plugins.json`:
+
 ```json
-["dataview", "folder-note-core"]
+["dataview"]
 ```
+
+Only preconfigure `dataview` because the generated dashboards depend on it.
+
+### Step 10: Optional role-vault module
+
+Only if `feature_flags.role_vaults_enabled = true`, generate:
+- `vault-roles.yaml`
+- `build-vaults.sh`
+- `docs/build-vaults-README.md`
+
+#### `vault-roles.yaml`
+
+Use:
+- output directory = `./Role-Vaults`
+- roles from `access_levels`
+- never include `RED` in derived role vaults
+
+Sensitivity ceilings:
+- highest role gets `AMBER`
+- middle roles get `BLUE`
+- lowest role gets `GREEN`
+- single non-owner role gets `BLUE`
+
+For include paths:
+- highest role: `00-Home`, all numbered section folders except `01-Finance`, `Templates`
+- middle roles: `00-Home`, non-finance numbered section folders, `Templates`
+- lowest roles: `00-Home`, only `GREEN`-safe section folders by script filtering, `Templates`
+
+Write generic YAML using the actual section folder names and actual access levels.
+
+#### `build-vaults.sh`
+
+Write an executable bash script that:
+- reads `vault-roles.yaml`
+- builds filtered copies into `Role-Vaults/`
+- never modifies the master vault
+- never copies `.claude`, `Sessions`, `Memory`, `.git`, `node_modules`, or `docs`
+- never copies `RED` notes
+- excludes notes with `private: true`
+- respects `sensitivity` ceiling
+- if an `access` field exists, only include the file when the role name is present in `access`
+- supports:
+  - `./build-vaults.sh`
+  - `./build-vaults.sh --role manager`
+  - `./build-vaults.sh --dry-run`
+
+#### `docs/build-vaults-README.md`
+
+Document:
+- what the role-vault generator does
+- quick start commands
+- output location
+- generated roles
+- sensitivity hierarchy
+- frontmatter requirements
+- hard rules
+- troubleshooting
+
+Keep the documentation generic. Do not mention Savwinch or any company-specific paths.
 
 ---
 
-## Completion Message
+## Completion
 
-After all files are generated, output:
+After generation, output:
 
-```
+```text
 Your Business Brain is ready.
 
 What I built:
-  - [X] folders organised by business area
-  - [X] templates for notes, meetings, and sessions
-  - CLAUDE.md with your full business context
-  - /resume, /wrap-up, and /morning skills
-  - PROGRESS.md dashboard
-  - Memory system pre-loaded with your profile
+  - [X] managed config: `.business-brain.json`
+  - [X] numbered business folders
+  - [X] `CLAUDE.md` and `PROGRESS.md`
+  - [X] `/resume`, `/wrap-up`, and `/morning`
+  - [X] templates for repeatable notes
+  - [X] local `Memory/` reference files
+  [If role_vaults_enabled]
+  - [X] optional role-vault tooling
 
-Recommended Obsidian plugins (install from Settings > Community Plugins):
-  Day 1:
-  - Dataview (powers your dashboards — query notes like a database)
-  - Calendar (visual sidebar for navigating session logs by date)
-  - Folder Note (click a folder to see its index page)
+Recommended next steps:
+  1. Open this folder in Obsidian
+  2. Install the Dataview plugin
+  3. Start your next session with `/resume`
+  4. End sessions with `/wrap-up`
+  5. Run `/morning` when you want a daily briefing
+  [If role_vaults_enabled]
+  6. Preview role vaults with `./build-vaults.sh --dry-run`
 
-  Week 1:
-  - Obsidian Git (auto-commit changes — free version history + backup)
-  - Kanban (visual project boards for task tracking)
-  - Quick Switcher++ (find any note instantly)
+Notes:
+- Update this setup later by re-running `/setup-business-brain`
+- The command will use `.business-brain.json` to update scaffold files safely
 
-  Later:
-  - Meld Encrypt (encrypt sensitive notes at rest)
-  - Tasks (track tasks with due dates across the vault)
-  - Homepage (set 00-Home/dashboard.md as your landing page)
-
-Next steps:
-  1. Open this folder in Obsidian (File > Open Vault > select this folder)
-  2. Install the recommended plugins above
-  3. Run /morning tomorrow to try your daily briefing
-  4. Start any session with /resume — Claude will know where you left off
-  5. End sessions with /wrap-up to keep your log current
-
-You're good to go. What would you like to work on first?
+What would you like to work on first?
 ```
+
+

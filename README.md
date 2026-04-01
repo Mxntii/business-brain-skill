@@ -1,96 +1,157 @@
-# Business Brain — Claude Code Skill
+# Business Brain — Claude Code Command
 
-A Claude Code skill that builds a complete business operations workspace in ~3 minutes. It interviews you about your business, then generates an Obsidian-compatible knowledge vault with AI context, session management, a daily planner, and templates — all tailored to your setup.
+`/setup-business-brain` builds or safely updates a business operations workspace for Claude Code users who want a clean Obsidian-compatible vault without hand-building the structure.
 
-## What You Get
+It interviews the user, normalizes the answers into a managed `.business-brain.json` config, then generates the workspace scaffold in one pass.
 
-- **CLAUDE.md** — Your business context file (Claude reads this every session)
-- **PROGRESS.md** — Status dashboard across all business areas
-- **Numbered folder structure** — Organised by your business functions (Finance, Sales, Operations, etc.)
-- **3 skills** — `/resume` (session continuity), `/wrap-up` (session logging), `/morning` (daily planner)
-- **Memory system** — Persistent context that carries across conversations
-- **Templates** — Session logs, meeting notes, procedures, project briefs
-- **Obsidian config** — Ready to open as a vault with recommended plugins
+## What It Generates
+
+Always generated:
+- `.business-brain.json` — managed config for future update runs
+- `CLAUDE.md` — deterministic business context for future sessions
+- `PROGRESS.md` — cross-business dashboard
+- numbered section folders with `_index.md` and `dashboard.md`
+- `.claude/commands/resume.md`
+- `.claude/commands/wrap-up.md`
+- `.claude/commands/morning.md`
+- `Templates/` with starter note templates
+- `Memory/` with vault-local reference files
+- minimal `.obsidian/` config
+
+Generated only when enabled:
+- `vault-roles.yaml`
+- `build-vaults.sh`
+- `docs/build-vaults-README.md`
+
+The role-vault module is enabled automatically for multi-level access setups, or manually if the user asks for staff-specific vaults during confirmation.
 
 ## Install
 
-Copy the skill file into your Claude Code commands directory:
+### Preferred bootstrap install
 
 ```bash
-# Create the commands directory if it doesn't exist
-mkdir -p .claude/commands
+curl -fsSL https://raw.githubusercontent.com/Mxntii/business-brain-skill/main/install.sh | bash
+```
 
-# Download the skill
-curl -o .claude/commands/setup-business-brain.md \
-  https://raw.githubusercontent.com/Mxntii/business-brain-skill/main/setup-business-brain.md
+This creates `.claude/commands/setup-business-brain.md` in the current directory by default.
+
+### Install to a different commands directory
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mxntii/business-brain-skill/main/install.sh | \
+  bash -s -- --commands-dir /path/to/.claude/commands
+```
+
+### Manual single-file fallback
+
+```bash
+mkdir -p .claude/commands
+curl -fsSL \
+  https://raw.githubusercontent.com/Mxntii/business-brain-skill/main/setup-business-brain.md \
+  -o .claude/commands/setup-business-brain.md
 ```
 
 ## Usage
 
-Open Claude Code in the directory where you want your workspace, then run:
+Open Claude Code in the folder where you want the workspace, then run:
 
-```
+```text
 /setup-business-brain
 ```
 
-It asks 5 questions:
+The command:
+1. checks for an existing `.business-brain.json` or `CLAUDE.md`
+2. offers safe update, rebuild, or adoption when appropriate
+3. asks 5 setup questions
+4. shows a concrete build summary
+5. generates the workspace after confirmation
 
-1. **Business identity** — Name, industry, location, your role, team size
-2. **Business structure** — Pick departments or list your own (industry-adaptive suggestions)
-3. **Systems & tools** — Email, calendar, CRM, accounting, tasks (configures integrations)
-4. **Sensitivity** — How to handle confidential data (solo / two-tier / four-tier)
-5. **Daily workflow** — What you check each morning (configures your daily planner)
+## Example Outcome
 
-Every question has a skip default. Answer "A, A, A, A, 1 2" and you get a clean setup in under 60 seconds.
+For a small services business, the generated tree looks like:
 
-## What Gets Generated
-
-```
-Your Business/
+```text
+My Business/
+├── .business-brain.json
 ├── .claude/commands/
-│   ├── resume.md          → Pick up where you left off (reads last 3 sessions + memory)
-│   ├── wrap-up.md         → Log what you did, update dashboard
-│   └── morning.md         → Daily briefing tailored to your tools + workflow
-├── .obsidian/             → Vault config (open in Obsidian immediately)
-├── 00-Home/dashboard.md   → Master hub linking all sections
-├── 01-Finance/            → With _index.md + dashboard.md
-├── 02-[Your Sections]/    → 4-8 sections based on your answers
-├── Sessions/              → Session logs for continuity
-├── Templates/             → Note templates with frontmatter standards
-├── CLAUDE.md              → Business context (under 200 lines)
-├── PROGRESS.md            → Status dashboard
-└── Memory files           → User profile, project overview, systems reference
+│   ├── resume.md
+│   ├── wrap-up.md
+│   └── morning.md
+├── .obsidian/
+├── 00-Home/
+│   └── dashboard.md
+├── 01-Finance/
+│   ├── _index.md
+│   └── dashboard.md
+├── 02-Clients/
+├── 03-Projects/
+├── 04-Marketing/
+├── 05-Operations/
+├── Sessions/
+├── Templates/
+├── Memory/
+├── CLAUDE.md
+└── PROGRESS.md
 ```
 
-## Recommended Obsidian Plugins
+If role-vault tooling is enabled, it also generates:
 
-The skill suggests these after setup:
+```text
+build-vaults.sh
+vault-roles.yaml
+docs/build-vaults-README.md
+```
 
-**Day 1:**
-- [Dataview](https://github.com/blacksmithgu/obsidian-dataview) — Powers dashboard queries
-- [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) — Visual session log navigation
-- [Folder Note](https://github.com/LostPaul/obsidian-folder-notes) — Click folders to see their index
+## Update and Rebuild Behavior
 
-**Week 1:**
-- [Obsidian Git](https://github.com/denolehov/obsidian-git) — Free version history + backup
-- [Kanban](https://github.com/mgmeyers/obsidian-kanban) — Visual project boards
-- [Quick Switcher++](https://github.com/darlal/obsidian-switcher-plus) — Find any note instantly
+If `.business-brain.json` already exists:
+- **Update config safely** re-runs only the selected interview sections and rewrites tracked scaffold files only
+- **Rebuild scaffold from scratch** backs up generated scaffold files into `_backup_YYYY-MM-DD-HHMMSS/` before regenerating
 
-## Design Principles
+Important safety rules:
+- user-authored business content inside numbered section folders is not deleted during update
+- removed sections are marked as legacy in `.business-brain.json` instead of being silently deleted
+- `Sessions/` content is preserved
 
-- **CLAUDE.md under 200 lines** — longer gets ignored
-- **Max 3 folder levels** — deeper structures get abandoned
-- **4 starter skills only** — `/resume`, `/wrap-up`, `/morning`, `/setup-business-brain`
-- **Max 5 frontmatter fields** — over-structured templates don't get used
-- **Manual memory curation** — beats automated noise every time
-- **Skip-friendly** — every question has sensible defaults
+## Source Layout
 
-## Requirements
+This repo uses a multi-file source package for maintainability:
 
-- [Claude Code](https://claude.ai/code) CLI
-- [Obsidian](https://obsidian.md/) (free) — optional but recommended
-- MCP tool connections (Gmail, Calendar, etc.) — optional, enhances `/morning` skill
+```text
+src/
+├── 00-overview.md
+├── 10-preflight.md
+├── 20-interview.md
+├── 30-confirmation.md
+├── 40-generation.md
+└── 50-completion.md
+scripts/
+├── build-command.sh
+└── validate.sh
+```
+
+`setup-business-brain.md` at the repo root remains the legacy single-file install artifact for compatibility.
+
+## Local Development
+
+Rebuild the command artifact:
+
+```bash
+./scripts/build-command.sh
+```
+
+Run lightweight validation:
+
+```bash
+./scripts/validate.sh
+```
+
+## Truthful Constraints
+
+- The setup records configured tools, but does not prove MCP connectivity during install.
+- Dataview is the only Obsidian plugin preconfigured, because the generated dashboards rely on it.
+- Role-vault tooling is optional and should not be assumed to exist unless it was enabled during setup.
 
 ## License
 
-MIT — use it, adapt it, share it.
+MIT
